@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>My Finances</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #ffffff; --bg-secondary: #f5f5f3; --bg-tertiary: #eeede9;
+    --text: #1a1a18; --text-secondary: #6b6b67; --text-tertiary: #9e9e9a;
+    --border: #e0dfd9;
+    --income: #1D9E75; --expense: #D85A30; --savings: #185FA5;
+    --invest: #7F77DD; --planned: #BA7517;
+    --radius: 12px; --radius-sm: 8px;
+    --font: 'DM Sans', sans-serif; --mono: 'DM Mono', monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1c1c1a; --bg-secondary: #252523; --bg-tertiary: #2e2e2c;
+      --text: #f0efe9; --text-secondary: #9e9e9a; --text-tertiary: #6b6b67;
+      --border: #363634;
+    }
+  }
+  body { font-family: var(--font); font-size: 15px; background: var(--bg-tertiary); color: var(--text); min-height: 100vh; padding-bottom: 60px; }
+  .app { max-width: 860px; margin: 0 auto; padding: 1.5rem 1rem; }
+
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 10px 20px; border-radius: 999px; font-size: 13px; z-index: 999; opacity: 0; transition: opacity 0.2s; pointer-events: none; white-space: nowrap; }
+  .toast.show { opacity: 1; }
+
+  .sync-bar { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-tertiary); margin-bottom: 1rem; padding: 8px 14px; background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-sm); }
+  .sync-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-tertiary); flex-shrink: 0; }
+  .sync-dot.synced { background: var(--income); }
+  .sync-dot.syncing { background: var(--planned); animation: pulse 1s infinite; }
+  .sync-dot.error { background: var(--expense); }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  .top-bar { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 12px; }
+  .top-bar h1 { font-size: 20px; font-weight: 500; }
+  .top-bar p { font-size: 13px; color: var(--text-tertiary); margin-top: 3px; }
+  .top-right { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+
+  .month-nav { display: flex; align-items: center; gap: 6px; background: var(--bg); border: 0.5px solid var(--border); border-radius: 999px; padding: 5px 10px; }
+  .month-nav button { background: none; border: none; cursor: pointer; color: var(--text-secondary); font-size: 14px; padding: 0 4px; line-height: 1; }
+  .month-nav span { font-size: 13px; font-weight: 500; min-width: 110px; text-align: center; }
+
+  .currency-toggle { display: flex; border: 0.5px solid var(--border); border-radius: 999px; overflow: hidden; background: var(--bg-secondary); }
+  .currency-toggle button { padding: 6px 16px; font-size: 13px; font-family: var(--font); border: none; background: transparent; color: var(--text-secondary); cursor: pointer; border-radius: 999px; transition: all 0.15s; }
+  .currency-toggle button.active { background: var(--bg); color: var(--text); font-weight: 500; border: 0.5px solid var(--border); }
+
+  .fx-bar { display: flex; align-items: center; gap: 10px; background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-sm); padding: 9px 14px; margin-bottom: 1rem; flex-wrap: wrap; }
+  .fx-bar label { font-size: 12px; color: var(--text-secondary); white-space: nowrap; }
+  .fx-bar input { width: 110px; padding: 5px 10px; font-size: 13px; font-family: var(--mono); border: 0.5px solid var(--border); border-radius: 6px; background: var(--bg-secondary); color: var(--text); outline: none; }
+  .fx-bar span { font-size: 12px; color: var(--text-tertiary); }
+
+  .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 1.5rem; }
+  .summary-card { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-sm); padding: 14px 16px; }
+  .summary-card .label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-tertiary); margin-bottom: 6px; }
+  .summary-card .amount { font-family: var(--mono); font-size: 19px; font-weight: 500; word-break: break-all; }
+  .summary-card .sub { font-size: 12px; color: var(--text-tertiary); margin-top: 4px; }
+  .amount.positive { color: var(--income); }
+  .amount.negative { color: var(--expense); }
+
+  .nav-wrap { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius); margin-bottom: 1rem; padding: 0 4px; overflow-x: auto; white-space: nowrap; }
+  .nav { display: inline-flex; min-width: 100%; }
+  .nav button { padding: 12px 16px; font-size: 13px; font-family: var(--font); border: none; background: transparent; color: var(--text-secondary); cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.15s; white-space: nowrap; }
+  .nav button.active { color: var(--text); border-bottom-color: var(--text); font-weight: 500; }
+
+  .panel { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 1.25rem; }
+  .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+  .section-header h2 { font-size: 13px; font-weight: 500; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.06em; }
+
+  .add-btn { padding: 6px 16px; font-size: 13px; font-family: var(--font); border: 0.5px solid var(--border); background: var(--bg-secondary); color: var(--text); border-radius: 999px; cursor: pointer; transition: all 0.15s; }
+  .add-btn:hover { background: var(--bg-tertiary); }
+  .export-btn { padding: 6px 14px; font-size: 12px; font-family: var(--font); border: 0.5px solid var(--border); background: transparent; color: var(--text-secondary); border-radius: 999px; cursor: pointer; transition: all 0.15s; }
+  .export-btn:hover { background: var(--bg-secondary); color: var(--text); }
+
+  .entries-list { display: flex; flex-direction: column; gap: 6px; }
+  .entry-item { display: flex; align-items: center; padding: 11px 14px; background: var(--bg-secondary); border: 0.5px solid var(--border); border-radius: var(--radius-sm); gap: 12px; transition: border-color 0.15s; }
+  .entry-item:hover { border-color: var(--text-tertiary); }
+  .entry-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .entry-info { flex: 1; min-width: 0; }
+  .entry-name { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .entry-meta { font-size: 12px; color: var(--text-tertiary); margin-top: 2px; }
+  .entry-amount { font-family: var(--mono); font-size: 14px; font-weight: 500; white-space: nowrap; }
+  .entry-delete { background: none; border: none; color: var(--text-tertiary); cursor: pointer; font-size: 18px; padding: 2px 4px; border-radius: 4px; line-height: 1; transition: color 0.15s; flex-shrink: 0; }
+  .entry-delete:hover { color: var(--expense); }
+
+  .bar-chart { margin-top: 1.25rem; }
+  .bar-chart-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-tertiary); margin-bottom: 10px; }
+  .bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .bar-label { font-size: 12px; color: var(--text-secondary); width: 100px; flex-shrink: 0; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bar-track { flex: 1; height: 5px; background: var(--bg-tertiary); border-radius: 99px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 99px; transition: width 0.4s ease; }
+  .bar-val { font-family: var(--mono); font-size: 11px; color: var(--text-secondary); width: 90px; flex-shrink: 0; }
+
+  .progress-row { display: flex; align-items: center; padding: 13px 14px; background: var(--bg-secondary); border: 0.5px solid var(--border); border-radius: var(--radius-sm); gap: 12px; margin-bottom: 6px; }
+  .progress-info { flex: 1; min-width: 0; }
+  .progress-name { font-size: 14px; margin-bottom: 7px; }
+  .progress-track { height: 4px; background: var(--bg-tertiary); border-radius: 99px; overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 99px; transition: width 0.4s; }
+  .progress-meta { font-size: 12px; color: var(--text-tertiary); margin-top: 5px; }
+  .progress-pct { font-family: var(--mono); font-size: 14px; font-weight: 500; white-space: nowrap; }
+
+  .empty-state { text-align: center; padding: 2.5rem; color: var(--text-tertiary); font-size: 14px; border: 0.5px dashed var(--border); border-radius: var(--radius-sm); }
+  .loading-state { text-align: center; padding: 2rem; color: var(--text-tertiary); font-size: 14px; }
+
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 100; align-items: center; justify-content: center; padding: 1rem; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 1.5rem; width: 100%; max-width: 420px; max-height: 90vh; overflow-y: auto; }
+  .modal h3 { font-size: 16px; font-weight: 500; margin-bottom: 1.25rem; }
+  .form-group { margin-bottom: 14px; }
+  .form-group label { display: block; font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; }
+  .form-group input, .form-group select { width: 100%; padding: 9px 12px; font-size: 14px; font-family: var(--font); border: 0.5px solid var(--border); border-radius: var(--radius-sm); background: var(--bg-secondary); color: var(--text); outline: none; transition: border-color 0.15s; }
+  .form-group input:focus, .form-group select:focus { border-color: var(--text-secondary); }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 1.25rem; }
+  .btn-cancel { padding: 8px 18px; font-size: 13px; font-family: var(--font); border: 0.5px solid var(--border); background: transparent; color: var(--text-secondary); border-radius: 999px; cursor: pointer; }
+  .btn-save { padding: 8px 22px; font-size: 13px; font-family: var(--font); border: none; background: var(--text); color: var(--bg); border-radius: 999px; cursor: pointer; font-weight: 500; }
+  .btn-save:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+  .divider { height: 0.5px; background: var(--border); margin: 1rem 0; }
+
+  @media (max-width: 520px) {
+    .summary-grid { grid-template-columns: 1fr 1fr; }
+    .bar-label { width: 70px; }
+    .bar-val { width: 70px; font-size: 10px; }
+    .form-row { grid-template-columns: 1fr; }
+    .top-right { flex-direction: column; align-items: flex-start; }
+  }
+</style>
+</head>
+<body>
+<div class="toast" id="toast"></div>
+<div class="app">
+
+  <div class="top-bar">
+    <div>
+      <h1>My Finances</h1>
+      <p>Synced across all your devices</p>
+    </div>
+    <div class="top-right">
+      <div class="month-nav">
+        <button onclick="changeMonth(-1)">&#8592;</button>
+        <span id="month-label"></span>
+        <button onclick="changeMonth(1)">&#8594;</button>
+      </div>
+      <div class="currency-toggle">
+        <button onclick="setCurrency('NGN')">&#8358; NGN</button>
+        <button onclick="setCurrency('USD')">$ USD</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="sync-bar">
+    <div class="sync-dot syncing" id="sync-dot"></div>
+    <span id="sync-label">Connecting to database...</span>
+  </div>
+
+  <div class="fx-bar">
+    <label>USD / NGN rate:</label>
+    <input type="number" id="fx-rate" value="1580" min="1" onchange="renderAll()" />
+    <span>Update whenever the rate changes</span>
+  </div>
+
+  <div class="summary-grid">
+    <div class="summary-card">
+      <div class="label">Total Inflow</div>
+      <div class="amount positive" id="total-income">&#8358;0</div>
+      <div class="sub" id="income-count">—</div>
+    </div>
+    <div class="summary-card">
+      <div class="label">Total Expenses</div>
+      <div class="amount negative" id="total-expenses">&#8358;0</div>
+      <div class="sub" id="expense-count">—</div>
+    </div>
+    <div class="summary-card">
+      <div class="label">Net Balance</div>
+      <div class="amount" id="net-balance">&#8358;0</div>
+      <div class="sub">After expenses</div>
+    </div>
+    <div class="summary-card">
+      <div class="label">Saved + Invested</div>
+      <div class="amount" id="total-saved" style="color:var(--savings)">&#8358;0</div>
+      <div class="sub" id="saved-count">—</div>
+    </div>
+  </div>
+
+  <div class="nav-wrap">
+    <div class="nav">
+      <button class="active" onclick="showTab('income', this)">Income</button>
+      <button onclick="showTab('expenses', this)">Expenses</button>
+      <button onclick="showTab('savings', this)">Savings</button>
+      <button onclick="showTab('investments', this)">Investments</button>
+      <button onclick="showTab('planned', this)">Planned</button>
+    </div>
+  </div>
+
+  <div id="tab-income" class="tab-content active">
+    <div class="panel">
+      <div class="section-header">
+        <h2>Income &amp; Inflows</h2>
+        <div style="display:flex;gap:8px">
+          <button class="export-btn" onclick="exportCSV('income')">Export CSV</button>
+          <button class="add-btn" onclick="openModal('income')">+ Add</button>
+        </div>
+      </div>
+      <div class="entries-list" id="income-list"><div class="loading-state">Loading...</div></div>
+      <div class="bar-chart" id="income-chart"></div>
+    </div>
+  </div>
+
+  <div id="tab-expenses" class="tab-content">
+    <div class="panel">
+      <div class="section-header">
+        <h2>Expenses</h2>
+        <div style="display:flex;gap:8px">
+          <button class="export-btn" onclick="exportCSV('expenses')">Export CSV</button>
+          <button class="add-btn" onclick="openModal('expenses')">+ Add</button>
+        </div>
+      </div>
+      <div class="entries-list" id="expenses-list"><div class="loading-state">Loading...</div></div>
+      <div class="bar-chart" id="expenses-chart"></div>
+    </div>
+  </div>
+
+  <div id="tab-savings" class="tab-content">
+    <div class="panel">
+      <div class="section-header">
+        <h2>Savings Goals</h2>
+        <button class="add-btn" onclick="openModal('savings')">+ Add Goal</button>
+      </div>
+      <div id="savings-list"><div class="loading-state">Loading...</div></div>
+    </div>
+  </div>
+
+  <div id="tab-investments" class="tab-content">
+    <div class="panel">
+      <div class="section-header">
+        <h2>Investments</h2>
+        <div style="display:flex;gap:8px">
+          <button class="export-btn" onclick="exportCSV('investments')">Export CSV</button>
+          <button class="add-btn" onclick="openModal('investments')">+ Add</button>
+        </div>
+      </div>
+      <div class="entries-list" id="investments-list"><div class="loading-state">Loading...</div></div>
+    </div>
+  </div>
+
+  <div id="tab-planned" class="tab-content">
+    <div class="panel">
+      <div class="section-header">
+        <h2>Planned Expenses</h2>
+        <div style="display:flex;gap:8px">
+          <button class="export-btn" onclick="exportCSV('planned')">Export CSV</button>
+          <button class="add-btn" onclick="openModal('planned')">+ Add</button>
+        </div>
+      </div>
+      <div id="planned-list"><div class="loading-state">Loading...</div></div>
+    </div>
+  </div>
+
+</div>
+
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <h3 id="modal-title">Add Entry</h3>
+    <div class="form-group">
+      <label>Name / Description</label>
+      <input type="text" id="modal-name" placeholder="e.g. Salary, Rent..." />
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label id="modal-amount-label">Amount</label>
+        <input type="number" id="modal-amount" placeholder="0" min="0" step="any" />
+      </div>
+      <div class="form-group">
+        <label>Currency</label>
+        <select id="modal-currency">
+          <option value="NGN">&#8358; NGN</option>
+          <option value="USD">$ USD</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Category</label>
+      <select id="modal-category"></select>
+    </div>
+    <div id="modal-target-group" style="display:none" class="form-group">
+      <label>Target Amount (goal)</label>
+      <input type="number" id="modal-target" placeholder="0" min="0" step="any" />
+    </div>
+    <div id="modal-date-group" style="display:none" class="form-group">
+      <label>Target / Due Date</label>
+      <input type="date" id="modal-date" />
+    </div>
+    <div class="form-group">
+      <label>Notes (optional)</label>
+      <input type="text" id="modal-notes" placeholder="Any extra detail..." />
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-save" id="btn-save" onclick="saveEntry()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://nxjpalkrrixrkxhnmmol.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im54anBhbGtycml4cmt4aG5tbW9sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NjQ0NDAsImV4cCI6MjA5MDU0MDQ0MH0.tL38baCYhHGunZk-xv7_4By29tGk-RPzLch8O6Mjex0';
+const SCHEMA = 'finances';
+const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+let currency = localStorage.getItem('fin_currency') || 'NGN';
+let currentType = 'income';
+let currentMonth = new Date().getMonth();
+let currentYear  = new Date().getFullYear();
+
+const categories = {
+  income:      ['Salary','Freelance','Business','Dividends','Rental Income','Gift','Other'],
+  expenses:    ['Housing','Food','Transport','Utilities','Health','Entertainment','Education','Personal Care','Clothing','Other'],
+  savings:     ['Emergency Fund','Home','Car','Education','Vacation','Retirement','Other'],
+  investments: ['Stocks','Bonds','Crypto','Real Estate','Mutual Fund','Fixed Deposit','ETF','Other'],
+  planned:     ['Travel','Wedding','Equipment','Home Renovation','Medical','Education','Other']
+};
+
+const colors = { income:'#1D9E75', expenses:'#D85A30', savings:'#185FA5', investments:'#7F77DD', planned:'#BA7517' };
+
+let cache = { income:[], expenses:[], savings:[], investments:[], planned:[] };
+
+// ── SUPABASE ─────────────────────────────────────────────
+async function sbFetch(table, opts={}) {
+  const { method='GET', body, params='' } = opts;
+  const url = `${SUPABASE_URL}/rest/v1/${table}${params?'?'+params:''}`;
+  const h = {
+    'apikey': SUPABASE_KEY,
+    'Authorization': 'Bearer '+SUPABASE_KEY,
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+    'Accept-Profile': SCHEMA,
+  };
+  if (method!=='GET') h['Content-Profile'] = SCHEMA;
+  if (method==='POST') h['Prefer'] = 'return=representation';
+  const res = await fetch(url, { method, headers:h, body: body?JSON.stringify(body):undefined });
+  if (!res.ok) throw new Error(await res.text());
+  if (res.status===204) return null;
+  return res.json();
+}
+
+async function loadAll() {
+  setSyncStatus('syncing','Syncing...');
+  try {
+    const m   = String(currentMonth+1).padStart(2,'0');
+    const from = `${currentYear}-${m}-01`;
+    const last = new Date(currentYear, currentMonth+1, 0).getDate();
+    const to   = `${currentYear}-${m}-${String(last).padStart(2,'0')}`;
+
+    const [inc, exp, sav, inv, pln] = await Promise.all([
+      sbFetch('income',      { params:`date=gte.${from}&date=lte.${to}&order=created_at.desc` }),
+      sbFetch('expenses',    { params:`date=gte.${from}&date=lte.${to}&order=created_at.desc` }),
+      sbFetch('savings',     { params:`order=created_at.desc` }),
+      sbFetch('investments', { params:`order=created_at.desc` }),
+      sbFetch('planned',     { params:`order=date.asc` }),
+    ]);
+
+    cache.income      = inc  || [];
+    cache.expenses    = exp  || [];
+    cache.savings     = sav  || [];
+    cache.investments = inv  || [];
+    cache.planned     = pln  || [];
+
+    setSyncStatus('synced', 'Synced · '+new Date().toLocaleTimeString());
+    renderAll();
+  } catch(e) {
+    setSyncStatus('error','Sync failed — check connection');
+    console.error(e);
+  }
+}
+
+async function deleteEntry(type, id) {
+  if (!confirm('Delete this entry?')) return;
+  setSyncStatus('syncing','Deleting...');
+  try {
+    await sbFetch(type, { method:'DELETE', params:`id=eq.${id}` });
+    showToast('Deleted');
+    await loadAll();
+  } catch(e) {
+    setSyncStatus('error','Delete failed');
+    showToast('Error deleting — try again');
+  }
+}
+
+// ── HELPERS ──────────────────────────────────────────────
+function setSyncStatus(state, label) {
+  document.getElementById('sync-dot').className = 'sync-dot '+state;
+  document.getElementById('sync-label').textContent = label;
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2500);
+}
+
+function getRate() { return parseFloat(document.getElementById('fx-rate').value)||1580; }
+function toNGN(a,c) { return c==='USD'?a*getRate():a; }
+
+function toDisplay(amount, cur) {
+  let v = amount;
+  const r = getRate();
+  if (cur==='NGN'&&currency==='USD') v=amount/r;
+  if (cur==='USD'&&currency==='NGN') v=amount*r;
+  const s = currency==='NGN'?'₦':'$';
+  if (v>=1000000) return s+(v/1000000).toFixed(2)+'M';
+  if (v>=1000)    return s+Math.round(v).toLocaleString();
+  return s+v.toFixed(2);
+}
+
+function setCurrency(c) {
+  currency = c;
+  localStorage.setItem('fin_currency', c);
+  document.querySelectorAll('.currency-toggle button').forEach((b,i)=>{
+    b.classList.toggle('active',(i===0&&c==='NGN')||(i===1&&c==='USD'));
+  });
+  renderAll();
+}
+
+function changeMonth(dir) {
+  currentMonth += dir;
+  if (currentMonth>11){currentMonth=0;currentYear++;}
+  if (currentMonth<0) {currentMonth=11;currentYear--;}
+  loadAll();
+}
+
+function showTab(tab, btn) {
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+tab).classList.add('active');
+  if(btn) btn.classList.add('active');
+}
+
+// ── MODAL ────────────────────────────────────────────────
+function openModal(type) {
+  currentType = type;
+  const titles = {income:'Add Income',expenses:'Add Expense',savings:'Add Savings Goal',investments:'Add Investment',planned:'Add Planned Expense'};
+  document.getElementById('modal-title').textContent = titles[type];
+  document.getElementById('modal-name').value = '';
+  document.getElementById('modal-amount').value = '';
+  document.getElementById('modal-currency').value = currency;
+  document.getElementById('modal-target').value = '';
+  document.getElementById('modal-notes').value = '';
+  document.getElementById('modal-amount-label').textContent = type==='savings'?'Amount saved so far':'Amount';
+  const today = new Date(currentYear, currentMonth, new Date().getDate()).toISOString().slice(0,10);
+  document.getElementById('modal-date').value = today;
+  const catSel = document.getElementById('modal-category');
+  catSel.innerHTML = categories[type].map(c=>`<option>${c}</option>`).join('');
+  document.getElementById('modal-target-group').style.display = type==='savings'?'block':'none';
+  document.getElementById('modal-date-group').style.display = (type==='savings'||type==='planned')?'block':'none';
+  document.getElementById('btn-save').disabled = false;
+  document.getElementById('btn-save').textContent = 'Save';
+  document.getElementById('modal-overlay').classList.add('open');
+  setTimeout(()=>document.getElementById('modal-name').focus(), 80);
+}
+
+function closeModal() { document.getElementById('modal-overlay').classList.remove('open'); }
+
+async function saveEntry() {
+  const name     = document.getElementById('modal-name').value.trim();
+  const amount   = parseFloat(document.getElementById('modal-amount').value)||0;
+  const cur      = document.getElementById('modal-currency').value;
+  const category = document.getElementById('modal-category').value;
+  const notes    = document.getElementById('modal-notes').value.trim();
+  const date     = document.getElementById('modal-date').value || new Date(currentYear,currentMonth,1).toISOString().slice(0,10);
+  if (!name) { document.getElementById('modal-name').focus(); return; }
+
+  const btn = document.getElementById('btn-save');
+  btn.disabled = true; btn.textContent = 'Saving...';
+
+  try {
+    let payload;
+    if (currentType==='savings') {
+      const target = parseFloat(document.getElementById('modal-target').value)||0;
+      payload = { name, current_amount:amount, target_amount:target, currency:cur, category, notes, date };
+    } else {
+      payload = { name, amount, currency:cur, category, notes, date };
+    }
+    await sbFetch(currentType, { method:'POST', body:payload });
+    closeModal();
+    showToast('Saved ✓');
+    await loadAll();
+  } catch(e) {
+    showToast('Error saving — try again');
+    console.error(e);
+    btn.disabled = false; btn.textContent = 'Save';
+  }
+}
+
+// ── RENDER ───────────────────────────────────────────────
+function renderEntries(type, id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const list = cache[type];
+  if (!list.length) { el.innerHTML='<div class="empty-state">No entries yet — tap + Add to get started</div>'; return; }
+  el.innerHTML = list.map(e=>{
+    const amt = type==='savings'?(e.current_amount||0):(e.amount||0);
+    return `<div class="entry-item">
+      <div class="entry-dot" style="background:${colors[type]}"></div>
+      <div class="entry-info">
+        <div class="entry-name">${e.name}</div>
+        <div class="entry-meta">${e.category||''}${e.notes?' · '+e.notes:''}${e.date?' · '+e.date:''}</div>
+      </div>
+      <div class="entry-amount" style="color:${colors[type]}">${toDisplay(amt,e.currency)}</div>
+      <button class="entry-delete" onclick="deleteEntry('${type}','${e.id}')">&#215;</button>
+    </div>`;
+  }).join('');
+}
+
+function renderBarChart(type, id) {
+  const el = document.getElementById(id);
+  if (!el||!cache[type].length){if(el)el.innerHTML='';return;}
+  const totals = {};
+  cache[type].forEach(e=>{ const a=type==='savings'?(e.current_amount||0):(e.amount||0); totals[e.category]=(totals[e.category]||0)+toNGN(a,e.currency); });
+  const max = Math.max(...Object.values(totals));
+  const s = currency==='NGN'?'₦':'$';
+  const fmt = v=>{ const d=currency==='NGN'?v:v/getRate(); return d>=1000000?(s+(d/1000000).toFixed(1)+'M'):(s+Math.round(d).toLocaleString()); };
+  el.innerHTML = `<div class="divider"></div><div class="bar-chart-title">By category</div>`
+    + Object.entries(totals).sort((a,b)=>b[1]-a[1]).map(([cat,val])=>
+      `<div class="bar-row"><div class="bar-label">${cat}</div><div class="bar-track"><div class="bar-fill" style="width:${Math.round((val/max)*100)}%;background:${colors[type]}"></div></div><div class="bar-val">${fmt(val)}</div></div>`
+    ).join('');
+}
+
+function renderSavings() {
+  const el = document.getElementById('savings-list');
+  if (!cache.savings.length){el.innerHTML='<div class="empty-state">No savings goals yet — tap + Add Goal</div>';return;}
+  el.innerHTML = cache.savings.map(e=>{
+    const pct = e.target_amount?Math.min(100,Math.round(((e.current_amount||0)/e.target_amount)*100)):0;
+    return `<div class="progress-row">
+      <div style="width:8px;height:8px;border-radius:50%;background:${colors.savings};flex-shrink:0"></div>
+      <div class="progress-info">
+        <div class="progress-name">${e.name} <span style="font-size:12px;color:var(--text-tertiary)">${e.category||''}</span></div>
+        <div class="progress-track"><div class="progress-fill" style="width:${pct}%;background:${colors.savings}"></div></div>
+        <div class="progress-meta">${toDisplay(e.current_amount||0,e.currency)} of ${toDisplay(e.target_amount||0,e.currency)}${e.date?' · by '+e.date:''}</div>
+      </div>
+      <div class="progress-pct">${pct}%</div>
+      <button class="entry-delete" onclick="deleteEntry('savings','${e.id}')">&#215;</button>
+    </div>`;
+  }).join('');
+}
+
+function renderPlanned() {
+  const el = document.getElementById('planned-list');
+  if (!cache.planned.length){el.innerHTML='<div class="empty-state">No planned expenses yet — tap + Add</div>';return;}
+  const now = new Date();
+  el.innerHTML = cache.planned.map(e=>{
+    const due = e.date?new Date(e.date):null;
+    const od  = due&&due<now;
+    return `<div class="entry-item">
+      <div class="entry-dot" style="background:${od?'var(--expense)':colors.planned}"></div>
+      <div class="entry-info">
+        <div class="entry-name">${e.name}</div>
+        <div class="entry-meta">${e.category||''}${e.notes?' · '+e.notes:''}${e.date?' · '+e.date:''}${od?' · <span style="color:var(--expense)">Past due</span>':''}</div>
+      </div>
+      <div class="entry-amount" style="color:${colors.planned}">${toDisplay(e.amount||0,e.currency)}</div>
+      <button class="entry-delete" onclick="deleteEntry('planned','${e.id}')">&#215;</button>
+    </div>`;
+  }).join('');
+}
+
+function renderSummary() {
+  const ti = cache.income.reduce((s,e)=>s+toNGN(e.amount||0,e.currency),0);
+  const te = cache.expenses.reduce((s,e)=>s+toNGN(e.amount||0,e.currency),0);
+  const ts = cache.savings.reduce((s,e)=>s+toNGN(e.current_amount||0,e.currency),0);
+  const tv = cache.investments.reduce((s,e)=>s+toNGN(e.amount||0,e.currency),0);
+  const net = ti-te;
+  const sy = currency==='NGN'?'₦':'$';
+  const fmt = v=>{ const d=currency==='NGN'?v:v/getRate(); return d>=1000000?(sy+(d/1000000).toFixed(2)+'M'):(sy+Math.round(d).toLocaleString()); };
+  document.getElementById('total-income').textContent   = fmt(ti);
+  document.getElementById('total-expenses').textContent = fmt(te);
+  document.getElementById('net-balance').textContent    = fmt(net);
+  document.getElementById('net-balance').className      = 'amount '+(net>=0?'positive':'negative');
+  document.getElementById('total-saved').textContent    = fmt(ts+tv);
+  document.getElementById('income-count').textContent   = cache.income.length+' entr'+(cache.income.length===1?'y':'ies');
+  document.getElementById('expense-count').textContent  = cache.expenses.length+' entr'+(cache.expenses.length===1?'y':'ies');
+  document.getElementById('saved-count').textContent    = cache.savings.length+' goal'+(cache.savings.length===1?'':'s')+', '+cache.investments.length+' investment'+(cache.investments.length===1?'':'s');
+  document.getElementById('month-label').textContent    = MONTH_NAMES[currentMonth]+' '+currentYear;
+}
+
+function renderAll() {
+  renderSummary();
+  renderEntries('income','income-list');
+  renderBarChart('income','income-chart');
+  renderEntries('expenses','expenses-list');
+  renderBarChart('expenses','expenses-chart');
+  renderSavings();
+  renderEntries('investments','investments-list');
+  renderPlanned();
+}
+
+function exportCSV(type) {
+  const list = cache[type];
+  if (!list.length){alert('No data to export.');return;}
+  const hdrs = type==='savings'?['Name','Category','Current Amount','Currency','Target','Date','Notes']:['Name','Category','Amount','Currency','Date','Notes'];
+  const rows = list.map(e=>type==='savings'?[e.name,e.category,e.current_amount||0,e.currency,e.target_amount||0,e.date||'',e.notes||'']:[e.name,e.category,e.amount||0,e.currency,e.date||'',e.notes||'']);
+  const csv  = [hdrs,...rows].map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\n');
+  const a    = document.createElement('a');
+  a.href     = URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download = `finances_${type}_${MONTH_NAMES[currentMonth]}_${currentYear}.csv`;
+  a.click();
+}
+
+// ── INIT ─────────────────────────────────────────────────
+document.getElementById('modal-overlay').addEventListener('click',function(e){if(e.target===this)closeModal();});
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape') closeModal();
+  if(e.key==='Enter'&&document.getElementById('modal-overlay').classList.contains('open')) saveEntry();
+});
+
+// Set initial currency button state
+document.querySelectorAll('.currency-toggle button').forEach((b,i)=>{
+  b.classList.toggle('active',(i===0&&currency==='NGN')||(i===1&&currency==='USD'));
+});
+
+loadAll();
+</script>
+</body>
+</html>
