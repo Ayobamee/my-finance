@@ -67,7 +67,7 @@
   .nav button { padding: 12px 16px; font-size: 13px; font-family: var(--font); border: none; background: transparent; color: var(--text-secondary); cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.15s; white-space: nowrap; }
   .nav button.active { color: var(--text); border-bottom-color: var(--text); font-weight: 500; }
 
-  .panel { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 1.25rem; }
+  .panel { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 1.25rem; margin-bottom: 1rem; }
   .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
   .section-header h2 { font-size: 13px; font-weight: 500; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.06em; }
 
@@ -106,6 +106,40 @@
   .empty-state { text-align: center; padding: 2.5rem; color: var(--text-tertiary); font-size: 14px; border: 0.5px dashed var(--border); border-radius: var(--radius-sm); }
   .loading-state { text-align: center; padding: 2rem; color: var(--text-tertiary); font-size: 14px; }
 
+  /* DASHBOARD */
+  .dash-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 1rem; }
+  .dash-stat { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-sm); padding: 16px; }
+  .dash-stat .ds-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-tertiary); margin-bottom: 6px; }
+  .dash-stat .ds-val { font-family: var(--mono); font-size: 22px; font-weight: 500; }
+  .dash-stat .ds-sub { font-size: 12px; color: var(--text-tertiary); margin-top: 5px; }
+
+  .trend-chart { position: relative; }
+  .trend-bars { display: flex; align-items: flex-end; gap: 6px; height: 80px; margin-bottom: 6px; }
+  .trend-month { display: flex; flex-direction: column; align-items: center; gap: 2px; flex: 1; }
+  .trend-bar-wrap { display: flex; gap: 2px; align-items: flex-end; width: 100%; justify-content: center; }
+  .trend-bar { width: 10px; border-radius: 3px 3px 0 0; transition: height 0.4s ease; min-height: 2px; }
+  .trend-label { font-size: 10px; color: var(--text-tertiary); }
+  .trend-legend { display: flex; gap: 14px; margin-top: 8px; }
+  .trend-legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text-secondary); }
+  .trend-legend-dot { width: 8px; height: 8px; border-radius: 2px; }
+
+  .planned-item { display: flex; align-items: center; padding: 10px 14px; background: var(--bg-secondary); border: 0.5px solid var(--border); border-radius: var(--radius-sm); gap: 12px; margin-bottom: 6px; }
+  .planned-item .pi-info { flex: 1; min-width: 0; }
+  .planned-item .pi-name { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .planned-item .pi-date { font-size: 12px; color: var(--text-tertiary); margin-top: 2px; }
+  .planned-item .pi-amt { font-family: var(--mono); font-size: 13px; font-weight: 500; white-space: nowrap; }
+  .days-badge { font-size: 11px; padding: 3px 8px; border-radius: 999px; white-space: nowrap; flex-shrink: 0; }
+  .days-badge.soon { background: #FFF3E0; color: #BA7517; }
+  .days-badge.future { background: var(--bg-tertiary); color: var(--text-tertiary); }
+  .days-badge.overdue { background: #FBE9E7; color: #D85A30; }
+
+  .invest-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 0.5px solid var(--border); }
+  .invest-row:last-child { border-bottom: none; }
+  .invest-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .invest-name { flex: 1; font-size: 14px; }
+  .invest-amt { font-family: var(--mono); font-size: 13px; font-weight: 500; color: var(--invest); }
+  .invest-pct { font-size: 12px; color: var(--text-tertiary); width: 36px; text-align: right; }
+
   .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 100; align-items: center; justify-content: center; padding: 1rem; }
   .modal-overlay.open { display: flex; }
   .modal { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 1.5rem; width: 100%; max-width: 420px; max-height: 90vh; overflow-y: auto; }
@@ -126,10 +160,12 @@
 
   @media (max-width: 520px) {
     .summary-grid { grid-template-columns: 1fr 1fr; }
+    .dash-grid-2 { grid-template-columns: 1fr; }
     .bar-label { width: 70px; }
     .bar-val { width: 70px; font-size: 10px; }
     .form-row { grid-template-columns: 1fr; }
     .top-right { flex-direction: column; align-items: flex-start; }
+    .trend-bar { width: 7px; }
   }
 </style>
 </head>
@@ -191,7 +227,8 @@
 
   <div class="nav-wrap">
     <div class="nav">
-      <button class="active" onclick="showTab('income', this)">Income</button>
+      <button class="active" onclick="showTab('dashboard', this)">Dashboard</button>
+      <button onclick="showTab('income', this)">Income</button>
       <button onclick="showTab('expenses', this)">Expenses</button>
       <button onclick="showTab('savings', this)">Savings</button>
       <button onclick="showTab('investments', this)">Investments</button>
@@ -199,7 +236,94 @@
     </div>
   </div>
 
-  <div id="tab-income" class="tab-content active">
+  <!-- DASHBOARD -->
+  <div id="tab-dashboard" class="tab-content active">
+
+    <!-- Inflow vs Expenses -->
+    <div class="panel">
+      <div class="section-header">
+        <h2>This month</h2>
+      </div>
+      <div class="dash-grid-2">
+        <div class="dash-stat">
+          <div class="ds-label">Inflow</div>
+          <div class="ds-val positive" id="dash-income">&#8358;0</div>
+          <div class="ds-sub" id="dash-income-sub">—</div>
+        </div>
+        <div class="dash-stat">
+          <div class="ds-label">Expenses</div>
+          <div class="ds-val negative" id="dash-expense">&#8358;0</div>
+          <div class="ds-sub" id="dash-expense-sub">—</div>
+        </div>
+        <div class="dash-stat">
+          <div class="ds-label">Net Balance</div>
+          <div class="ds-val" id="dash-net">&#8358;0</div>
+          <div class="ds-sub">Inflow minus expenses</div>
+        </div>
+        <div class="dash-stat">
+          <div class="ds-label">Savings rate</div>
+          <div class="ds-val" id="dash-rate" style="color:var(--savings)">0%</div>
+          <div class="ds-sub">Of inflow saved/invested</div>
+        </div>
+      </div>
+
+      <!-- Inflow vs Expenses bar -->
+      <div style="margin-top:4px">
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-tertiary);margin-bottom:6px">
+          <span>Inflow vs expenses</span>
+        </div>
+        <div style="height:8px;background:var(--bg-tertiary);border-radius:99px;overflow:hidden;display:flex">
+          <div id="dash-income-bar" style="height:100%;background:var(--income);border-radius:99px 0 0 99px;transition:width 0.4s"></div>
+          <div id="dash-expense-bar" style="height:100%;background:var(--expense);transition:width 0.4s"></div>
+        </div>
+        <div style="display:flex;gap:14px;margin-top:8px">
+          <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text-secondary)"><div style="width:8px;height:8px;border-radius:2px;background:var(--income)"></div>Inflow</div>
+          <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text-secondary)"><div style="width:8px;height:8px;border-radius:2px;background:var(--expense)"></div>Expenses</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Month on month trend -->
+    <div class="panel">
+      <div class="section-header"><h2>Month-on-month trend</h2></div>
+      <div class="trend-chart">
+        <div class="trend-bars" id="trend-bars"></div>
+        <div style="display:flex;justify-content:space-between" id="trend-labels"></div>
+        <div class="trend-legend">
+          <div class="trend-legend-item"><div class="trend-legend-dot" style="background:var(--income)"></div>Inflow</div>
+          <div class="trend-legend-item"><div class="trend-legend-dot" style="background:var(--expense)"></div>Expenses</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Savings goals -->
+    <div class="panel">
+      <div class="section-header">
+        <h2>Savings goals</h2>
+        <button class="add-btn" onclick="showTab('savings', document.querySelectorAll('.nav button')[3]); openModal('savings')">+ Add</button>
+      </div>
+      <div id="dash-savings"></div>
+    </div>
+
+    <!-- Investment breakdown -->
+    <div class="panel">
+      <div class="section-header">
+        <h2>Investment breakdown</h2>
+        <button class="add-btn" onclick="showTab('investments', document.querySelectorAll('.nav button')[4]); openModal('investments')">+ Add</button>
+      </div>
+      <div id="dash-investments"></div>
+    </div>
+
+    <!-- Upcoming planned -->
+    <div class="panel">
+      <div class="section-header"><h2>Upcoming planned expenses</h2></div>
+      <div id="dash-planned"></div>
+    </div>
+
+  </div>
+
+  <!-- INCOME -->
+  <div id="tab-income" class="tab-content">
     <div class="panel">
       <div class="section-header">
         <h2>Income &amp; Inflows</h2>
@@ -213,6 +337,7 @@
     </div>
   </div>
 
+  <!-- EXPENSES -->
   <div id="tab-expenses" class="tab-content">
     <div class="panel">
       <div class="section-header">
@@ -227,6 +352,7 @@
     </div>
   </div>
 
+  <!-- SAVINGS -->
   <div id="tab-savings" class="tab-content">
     <div class="panel">
       <div class="section-header">
@@ -237,6 +363,7 @@
     </div>
   </div>
 
+  <!-- INVESTMENTS -->
   <div id="tab-investments" class="tab-content">
     <div class="panel">
       <div class="section-header">
@@ -250,6 +377,7 @@
     </div>
   </div>
 
+  <!-- PLANNED -->
   <div id="tab-planned" class="tab-content">
     <div class="panel">
       <div class="section-header">
@@ -265,6 +393,7 @@
 
 </div>
 
+<!-- MODAL -->
 <div class="modal-overlay" id="modal-overlay">
   <div class="modal">
     <h3 id="modal-title">Add Entry</h3>
@@ -313,6 +442,8 @@ const SUPABASE_URL = 'https://nxjpalkrrixrkxhnmmol.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im54anBhbGtycml4cmt4aG5tbW9sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NjQ0NDAsImV4cCI6MjA5MDU0MDQ0MH0.tL38baCYhHGunZk-xv7_4By29tGk-RPzLch8O6Mjex0';
 const SCHEMA = 'finances';
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const MONTH_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const INVEST_COLORS = ['#7F77DD','#1D9E75','#185FA5','#D85A30','#BA7517','#9e9e9a','#5DCAA5','#378ADD'];
 
 let currency = localStorage.getItem('fin_currency') || 'NGN';
 let currentType = 'income';
@@ -330,16 +461,15 @@ const categories = {
 const colors = { income:'#1D9E75', expenses:'#D85A30', savings:'#185FA5', investments:'#7F77DD', planned:'#BA7517' };
 
 let cache = { income:[], expenses:[], savings:[], investments:[], planned:[] };
+let trendCache = {}; // { 'YYYY-MM': { income: 0, expenses: 0 } }
 
 // ── SUPABASE ─────────────────────────────────────────────
 async function sbFetch(table, opts={}) {
   const { method='GET', body, params='' } = opts;
   const url = `${SUPABASE_URL}/rest/v1/${table}${params?'?'+params:''}`;
   const h = {
-    'apikey': SUPABASE_KEY,
-    'Authorization': 'Bearer '+SUPABASE_KEY,
-    'Content-Type': 'application/json',
-    'Accept': 'application/json',
+    'apikey': SUPABASE_KEY, 'Authorization': 'Bearer '+SUPABASE_KEY,
+    'Content-Type': 'application/json', 'Accept': 'application/json',
     'Accept-Profile': SCHEMA,
   };
   if (method!=='GET') h['Content-Profile'] = SCHEMA;
@@ -353,26 +483,42 @@ async function sbFetch(table, opts={}) {
 async function loadAll() {
   setSyncStatus('syncing','Syncing...');
   try {
-    const m   = String(currentMonth+1).padStart(2,'0');
+    const m    = String(currentMonth+1).padStart(2,'0');
     const from = `${currentYear}-${m}-01`;
     const last = new Date(currentYear, currentMonth+1, 0).getDate();
     const to   = `${currentYear}-${m}-${String(last).padStart(2,'0')}`;
 
-    const [inc, exp, sav, inv, pln] = await Promise.all([
+    // load 6 months back for trend
+    const trendFrom = new Date(currentYear, currentMonth-5, 1).toISOString().slice(0,10);
+
+    const [inc, exp, sav, inv, pln, tInc, tExp] = await Promise.all([
       sbFetch('income',      { params:`date=gte.${from}&date=lte.${to}&order=created_at.desc` }),
       sbFetch('expenses',    { params:`date=gte.${from}&date=lte.${to}&order=created_at.desc` }),
       sbFetch('savings',     { params:`order=created_at.desc` }),
       sbFetch('investments', { params:`order=created_at.desc` }),
       sbFetch('planned',     { params:`order=date.asc` }),
+      sbFetch('income',      { params:`date=gte.${trendFrom}&date=lte.${to}&order=date.asc&select=amount,currency,date` }),
+      sbFetch('expenses',    { params:`date=gte.${trendFrom}&date=lte.${to}&order=date.asc&select=amount,currency,date` }),
     ]);
 
-    cache.income      = inc  || [];
-    cache.expenses    = exp  || [];
-    cache.savings     = sav  || [];
-    cache.investments = inv  || [];
-    cache.planned     = pln  || [];
+    cache.income = inc||[]; cache.expenses = exp||[];
+    cache.savings = sav||[]; cache.investments = inv||[];
+    cache.planned = pln||[];
 
-    setSyncStatus('synced', 'Synced · '+new Date().toLocaleTimeString());
+    // build trend data
+    trendCache = {};
+    (tInc||[]).forEach(e => {
+      const k = e.date.slice(0,7);
+      if (!trendCache[k]) trendCache[k] = {income:0, expenses:0};
+      trendCache[k].income += toNGN(e.amount||0, e.currency);
+    });
+    (tExp||[]).forEach(e => {
+      const k = e.date.slice(0,7);
+      if (!trendCache[k]) trendCache[k] = {income:0, expenses:0};
+      trendCache[k].expenses += toNGN(e.amount||0, e.currency);
+    });
+
+    setSyncStatus('synced','Synced · '+new Date().toLocaleTimeString());
     renderAll();
   } catch(e) {
     setSyncStatus('error','Sync failed — check connection');
@@ -398,25 +544,28 @@ function setSyncStatus(state, label) {
   document.getElementById('sync-dot').className = 'sync-dot '+state;
   document.getElementById('sync-label').textContent = label;
 }
-
 function showToast(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg; t.classList.add('show');
   setTimeout(()=>t.classList.remove('show'), 2500);
 }
-
 function getRate() { return parseFloat(document.getElementById('fx-rate').value)||1580; }
 function toNGN(a,c) { return c==='USD'?a*getRate():a; }
-
 function toDisplay(amount, cur) {
-  let v = amount;
-  const r = getRate();
+  let v = amount; const r = getRate();
   if (cur==='NGN'&&currency==='USD') v=amount/r;
   if (cur==='USD'&&currency==='NGN') v=amount*r;
   const s = currency==='NGN'?'₦':'$';
   if (v>=1000000) return s+(v/1000000).toFixed(2)+'M';
   if (v>=1000)    return s+Math.round(v).toLocaleString();
   return s+v.toFixed(2);
+}
+function fmtNGN(v) {
+  const d = currency==='NGN'?v:v/getRate();
+  const s = currency==='NGN'?'₦':'$';
+  if (d>=1000000) return s+(d/1000000).toFixed(2)+'M';
+  if (d>=1000)    return s+Math.round(d).toLocaleString();
+  return s+d.toFixed(2);
 }
 
 function setCurrency(c) {
@@ -453,7 +602,7 @@ function openModal(type) {
   document.getElementById('modal-target').value = '';
   document.getElementById('modal-notes').value = '';
   document.getElementById('modal-amount-label').textContent = type==='savings'?'Amount saved so far':'Amount';
-  const today = new Date(currentYear, currentMonth, new Date().getDate()).toISOString().slice(0,10);
+  const today = new Date(currentYear,currentMonth,new Date().getDate()).toISOString().slice(0,10);
   document.getElementById('modal-date').value = today;
   const catSel = document.getElementById('modal-category');
   catSel.innerHTML = categories[type].map(c=>`<option>${c}</option>`).join('');
@@ -475,10 +624,8 @@ async function saveEntry() {
   const notes    = document.getElementById('modal-notes').value.trim();
   const date     = document.getElementById('modal-date').value || new Date(currentYear,currentMonth,1).toISOString().slice(0,10);
   if (!name) { document.getElementById('modal-name').focus(); return; }
-
   const btn = document.getElementById('btn-save');
-  btn.disabled = true; btn.textContent = 'Saving...';
-
+  btn.disabled=true; btn.textContent='Saving...';
   try {
     let payload;
     if (currentType==='savings') {
@@ -488,22 +635,138 @@ async function saveEntry() {
       payload = { name, amount, currency:cur, category, notes, date };
     }
     await sbFetch(currentType, { method:'POST', body:payload });
-    closeModal();
-    showToast('Saved ✓');
+    closeModal(); showToast('Saved ✓');
     await loadAll();
   } catch(e) {
     showToast('Error saving — try again');
     console.error(e);
-    btn.disabled = false; btn.textContent = 'Save';
+    btn.disabled=false; btn.textContent='Save';
+  }
+}
+
+// ── DASHBOARD RENDER ─────────────────────────────────────
+function renderDashboard() {
+  const ti = cache.income.reduce((s,e)=>s+toNGN(e.amount||0,e.currency),0);
+  const te = cache.expenses.reduce((s,e)=>s+toNGN(e.amount||0,e.currency),0);
+  const ts = cache.savings.reduce((s,e)=>s+toNGN(e.current_amount||0,e.currency),0);
+  const tv = cache.investments.reduce((s,e)=>s+toNGN(e.amount||0,e.currency),0);
+  const net = ti-te;
+  const rate = ti>0?Math.round(((ts+tv)/ti)*100):0;
+
+  document.getElementById('dash-income').textContent   = fmtNGN(ti);
+  document.getElementById('dash-expense').textContent  = fmtNGN(te);
+  document.getElementById('dash-net').textContent      = fmtNGN(net);
+  document.getElementById('dash-net').className        = 'ds-val '+(net>=0?'positive':'negative');
+  document.getElementById('dash-rate').textContent     = rate+'%';
+  document.getElementById('dash-income-sub').textContent  = cache.income.length+' entr'+(cache.income.length===1?'y':'ies');
+  document.getElementById('dash-expense-sub').textContent = cache.expenses.length+' entr'+(cache.expenses.length===1?'y':'ies');
+
+  // inflow vs expense bar
+  const total = ti+te;
+  const iPct = total>0?Math.round((ti/total)*100):50;
+  const ePct = total>0?Math.round((te/total)*100):50;
+  document.getElementById('dash-income-bar').style.width  = iPct+'%';
+  document.getElementById('dash-expense-bar').style.width = ePct+'%';
+
+  // trend — last 6 months
+  const months = [];
+  for (let i=5; i>=0; i--) {
+    let m = currentMonth-i; let y = currentYear;
+    if (m<0){m+=12;y--;}
+    months.push({ key:`${y}-${String(m+1).padStart(2,'0')}`, label:MONTH_SHORT[m] });
+  }
+  const allVals = months.flatMap(({key})=>trendCache[key]?[trendCache[key].income,trendCache[key].expenses]:[0,0]);
+  const maxVal  = Math.max(...allVals, 1);
+
+  const barsEl   = document.getElementById('trend-bars');
+  const labelsEl = document.getElementById('trend-labels');
+
+  barsEl.innerHTML = months.map(({key,label})=>{
+    const d = trendCache[key]||{income:0,expenses:0};
+    const ih = Math.max(2, Math.round((d.income/maxVal)*76));
+    const eh = Math.max(2, Math.round((d.expenses/maxVal)*76));
+    return `<div class="trend-month">
+      <div class="trend-bar-wrap">
+        <div class="trend-bar" style="height:${ih}px;background:var(--income)" title="${fmtNGN(d.income)}"></div>
+        <div class="trend-bar" style="height:${eh}px;background:var(--expense)" title="${fmtNGN(d.expenses)}"></div>
+      </div>
+    </div>`;
+  }).join('');
+
+  labelsEl.innerHTML = months.map(({label})=>`<span style="font-size:10px;color:var(--text-tertiary);flex:1;text-align:center">${label}</span>`).join('');
+
+  // savings goals
+  const savEl = document.getElementById('dash-savings');
+  if (!cache.savings.length) {
+    savEl.innerHTML = '<div class="empty-state">No savings goals yet</div>';
+  } else {
+    savEl.innerHTML = cache.savings.map(e=>{
+      const pct = e.target_amount?Math.min(100,Math.round(((e.current_amount||0)/e.target_amount)*100)):0;
+      return `<div class="progress-row">
+        <div style="width:8px;height:8px;border-radius:50%;background:${colors.savings};flex-shrink:0"></div>
+        <div class="progress-info">
+          <div class="progress-name">${e.name}</div>
+          <div class="progress-track"><div class="progress-fill" style="width:${pct}%;background:${colors.savings}"></div></div>
+          <div class="progress-meta">${toDisplay(e.current_amount||0,e.currency)} of ${toDisplay(e.target_amount||0,e.currency)}</div>
+        </div>
+        <div class="progress-pct">${pct}%</div>
+      </div>`;
+    }).join('');
+  }
+
+  // investments
+  const invEl = document.getElementById('dash-investments');
+  if (!cache.investments.length) {
+    invEl.innerHTML = '<div class="empty-state">No investments yet</div>';
+  } else {
+    const totalInv = cache.investments.reduce((s,e)=>s+toNGN(e.amount||0,e.currency),0);
+    invEl.innerHTML = cache.investments.map((e,i)=>{
+      const val = toNGN(e.amount||0,e.currency);
+      const pct = totalInv>0?Math.round((val/totalInv)*100):0;
+      return `<div class="invest-row">
+        <div class="invest-dot" style="background:${INVEST_COLORS[i%INVEST_COLORS.length]}"></div>
+        <div class="invest-name">${e.name} <span style="font-size:12px;color:var(--text-tertiary)">${e.category||''}</span></div>
+        <div class="invest-amt">${toDisplay(e.amount||0,e.currency)}</div>
+        <div class="invest-pct">${pct}%</div>
+      </div>`;
+    }).join('');
+  }
+
+  // upcoming planned
+  const plnEl = document.getElementById('dash-planned');
+  const now = new Date(); now.setHours(0,0,0,0);
+  const upcoming = cache.planned
+    .filter(e=>e.date)
+    .map(e=>({ ...e, due: new Date(e.date) }))
+    .sort((a,b)=>a.due-b.due)
+    .slice(0,5);
+
+  if (!upcoming.length) {
+    plnEl.innerHTML = '<div class="empty-state">No planned expenses</div>';
+  } else {
+    plnEl.innerHTML = upcoming.map(e=>{
+      const diff = Math.round((e.due-now)/(1000*60*60*24));
+      let badgeClass = 'future', badgeText = `In ${diff}d`;
+      if (diff<0)  { badgeClass='overdue'; badgeText=`${Math.abs(diff)}d overdue`; }
+      else if (diff<=30) { badgeClass='soon'; badgeText=`In ${diff}d`; }
+      return `<div class="planned-item">
+        <div class="entry-dot" style="background:${badgeClass==='overdue'?'var(--expense)':colors.planned}"></div>
+        <div class="pi-info">
+          <div class="pi-name">${e.name}</div>
+          <div class="pi-date">${e.category||''} · ${e.date}</div>
+        </div>
+        <div class="pi-amt" style="color:${colors.planned}">${toDisplay(e.amount||0,e.currency)}</div>
+        <div class="days-badge ${badgeClass}">${badgeText}</div>
+      </div>`;
+    }).join('');
   }
 }
 
 // ── RENDER ───────────────────────────────────────────────
 function renderEntries(type, id) {
-  const el = document.getElementById(id);
-  if (!el) return;
+  const el = document.getElementById(id); if(!el)return;
   const list = cache[type];
-  if (!list.length) { el.innerHTML='<div class="empty-state">No entries yet — tap + Add to get started</div>'; return; }
+  if (!list.length){el.innerHTML='<div class="empty-state">No entries yet — tap + Add to get started</div>';return;}
   el.innerHTML = list.map(e=>{
     const amt = type==='savings'?(e.current_amount||0):(e.amount||0);
     return `<div class="entry-item">
@@ -524,11 +787,9 @@ function renderBarChart(type, id) {
   const totals = {};
   cache[type].forEach(e=>{ const a=type==='savings'?(e.current_amount||0):(e.amount||0); totals[e.category]=(totals[e.category]||0)+toNGN(a,e.currency); });
   const max = Math.max(...Object.values(totals));
-  const s = currency==='NGN'?'₦':'$';
-  const fmt = v=>{ const d=currency==='NGN'?v:v/getRate(); return d>=1000000?(s+(d/1000000).toFixed(1)+'M'):(s+Math.round(d).toLocaleString()); };
   el.innerHTML = `<div class="divider"></div><div class="bar-chart-title">By category</div>`
     + Object.entries(totals).sort((a,b)=>b[1]-a[1]).map(([cat,val])=>
-      `<div class="bar-row"><div class="bar-label">${cat}</div><div class="bar-track"><div class="bar-fill" style="width:${Math.round((val/max)*100)}%;background:${colors[type]}"></div></div><div class="bar-val">${fmt(val)}</div></div>`
+      `<div class="bar-row"><div class="bar-label">${cat}</div><div class="bar-track"><div class="bar-fill" style="width:${Math.round((val/max)*100)}%;background:${colors[type]}"></div></div><div class="bar-val">${fmtNGN(val)}</div></div>`
     ).join('');
 }
 
@@ -555,8 +816,7 @@ function renderPlanned() {
   if (!cache.planned.length){el.innerHTML='<div class="empty-state">No planned expenses yet — tap + Add</div>';return;}
   const now = new Date();
   el.innerHTML = cache.planned.map(e=>{
-    const due = e.date?new Date(e.date):null;
-    const od  = due&&due<now;
+    const due=e.date?new Date(e.date):null; const od=due&&due<now;
     return `<div class="entry-item">
       <div class="entry-dot" style="background:${od?'var(--expense)':colors.planned}"></div>
       <div class="entry-info">
@@ -570,18 +830,16 @@ function renderPlanned() {
 }
 
 function renderSummary() {
-  const ti = cache.income.reduce((s,e)=>s+toNGN(e.amount||0,e.currency),0);
-  const te = cache.expenses.reduce((s,e)=>s+toNGN(e.amount||0,e.currency),0);
-  const ts = cache.savings.reduce((s,e)=>s+toNGN(e.current_amount||0,e.currency),0);
-  const tv = cache.investments.reduce((s,e)=>s+toNGN(e.amount||0,e.currency),0);
-  const net = ti-te;
-  const sy = currency==='NGN'?'₦':'$';
-  const fmt = v=>{ const d=currency==='NGN'?v:v/getRate(); return d>=1000000?(sy+(d/1000000).toFixed(2)+'M'):(sy+Math.round(d).toLocaleString()); };
-  document.getElementById('total-income').textContent   = fmt(ti);
-  document.getElementById('total-expenses').textContent = fmt(te);
-  document.getElementById('net-balance').textContent    = fmt(net);
+  const ti=cache.income.reduce((s,e)=>s+toNGN(e.amount||0,e.currency),0);
+  const te=cache.expenses.reduce((s,e)=>s+toNGN(e.amount||0,e.currency),0);
+  const ts=cache.savings.reduce((s,e)=>s+toNGN(e.current_amount||0,e.currency),0);
+  const tv=cache.investments.reduce((s,e)=>s+toNGN(e.amount||0,e.currency),0);
+  const net=ti-te;
+  document.getElementById('total-income').textContent   = fmtNGN(ti);
+  document.getElementById('total-expenses').textContent = fmtNGN(te);
+  document.getElementById('net-balance').textContent    = fmtNGN(net);
   document.getElementById('net-balance').className      = 'amount '+(net>=0?'positive':'negative');
-  document.getElementById('total-saved').textContent    = fmt(ts+tv);
+  document.getElementById('total-saved').textContent    = fmtNGN(ts+tv);
   document.getElementById('income-count').textContent   = cache.income.length+' entr'+(cache.income.length===1?'y':'ies');
   document.getElementById('expense-count').textContent  = cache.expenses.length+' entr'+(cache.expenses.length===1?'y':'ies');
   document.getElementById('saved-count').textContent    = cache.savings.length+' goal'+(cache.savings.length===1?'':'s')+', '+cache.investments.length+' investment'+(cache.investments.length===1?'':'s');
@@ -590,6 +848,7 @@ function renderSummary() {
 
 function renderAll() {
   renderSummary();
+  renderDashboard();
   renderEntries('income','income-list');
   renderBarChart('income','income-chart');
   renderEntries('expenses','expenses-list');
@@ -600,14 +859,13 @@ function renderAll() {
 }
 
 function exportCSV(type) {
-  const list = cache[type];
-  if (!list.length){alert('No data to export.');return;}
-  const hdrs = type==='savings'?['Name','Category','Current Amount','Currency','Target','Date','Notes']:['Name','Category','Amount','Currency','Date','Notes'];
-  const rows = list.map(e=>type==='savings'?[e.name,e.category,e.current_amount||0,e.currency,e.target_amount||0,e.date||'',e.notes||'']:[e.name,e.category,e.amount||0,e.currency,e.date||'',e.notes||'']);
-  const csv  = [hdrs,...rows].map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\n');
-  const a    = document.createElement('a');
-  a.href     = URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
-  a.download = `finances_${type}_${MONTH_NAMES[currentMonth]}_${currentYear}.csv`;
+  const list=cache[type]; if(!list.length){alert('No data to export.');return;}
+  const hdrs=type==='savings'?['Name','Category','Current Amount','Currency','Target','Date','Notes']:['Name','Category','Amount','Currency','Date','Notes'];
+  const rows=list.map(e=>type==='savings'?[e.name,e.category,e.current_amount||0,e.currency,e.target_amount||0,e.date||'',e.notes||'']:[e.name,e.category,e.amount||0,e.currency,e.date||'',e.notes||'']);
+  const csv=[hdrs,...rows].map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download=`finances_${type}_${MONTH_NAMES[currentMonth]}_${currentYear}.csv`;
   a.click();
 }
 
@@ -617,12 +875,9 @@ document.addEventListener('keydown',e=>{
   if(e.key==='Escape') closeModal();
   if(e.key==='Enter'&&document.getElementById('modal-overlay').classList.contains('open')) saveEntry();
 });
-
-// Set initial currency button state
 document.querySelectorAll('.currency-toggle button').forEach((b,i)=>{
   b.classList.toggle('active',(i===0&&currency==='NGN')||(i===1&&currency==='USD'));
 });
-
 loadAll();
 </script>
 </body>
