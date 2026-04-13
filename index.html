@@ -403,6 +403,7 @@ let currency = localStorage.getItem('fin_cur') || 'NGN';
 let currentMonth = new Date().getMonth();
 let currentYear  = new Date().getFullYear();
 let currentModal = '';
+let editId = null; // holds ID when editing an existing record
 
 // LOCAL STORAGE for non-supabase data
 function lsGet(k){try{return JSON.parse(localStorage.getItem(k))||null}catch{return null}}
@@ -419,6 +420,7 @@ async function sb(table, opts={}){
   };
   if(method!=='GET') h['Content-Profile']=SCHEMA;
   if(method==='POST') h['Prefer']='return=representation';
+  if(method==='PATCH') h['Prefer']='return=representation';
   const res=await fetch(url,{method,headers:h,body:body?JSON.stringify(body):undefined});
   if(!res.ok) throw new Error(await res.text());
   if(res.status===204) return null;
@@ -648,30 +650,38 @@ const MODAL_TEMPLATES = {
   }
 };
 
-function openModal(type){
+function openModal(type, record=null){
   currentModal=type;
+  editId=record?record.id:null;
   const tmpl=MODAL_TEMPLATES[type];
-  document.getElementById('modal-title').textContent=tmpl.title;
+  const isEdit=!!record;
+  document.getElementById('modal-title').textContent=(isEdit?'Edit ':'')+tmpl.title.replace('Add ','');
   document.getElementById('modal-body').innerHTML=tmpl.fields;
   document.getElementById('btn-save').disabled=false;
-  document.getElementById('btn-save').textContent='Save';
-  // set today as default date
+  document.getElementById('btn-save').textContent=isEdit?'Update':'Save';
   const today=new Date().toISOString().slice(0,10);
   const df=document.getElementById('f-date');
   if(df) df.value=today;
   const fc=document.getElementById('f-currency');
   if(fc) fc.value=currency;
+  if(record){
+    const fields=['name','account_no','balance','type','value_ngn','value_usd','amount_ngn','amount_usd','amount','currency','category','notes','year','date','current_amount','target_amount','itype'];
+    fields.forEach(f=>{
+      const el=document.getElementById('f-'+f);
+      if(el&&record[f]!==undefined&&record[f]!==null) el.value=record[f];
+    });
+  }
   document.getElementById('overlay').classList.add('open');
   setTimeout(()=>{const fn=document.getElementById('f-name');if(fn)fn.focus();},80);
 }
-function closeModal(){document.getElementById('overlay').classList.remove('open');}
+function closeModal(){document.getElementById('overlay').classList.remove('open');editId=null;}
 
 function gv(id){const el=document.getElementById(id);return el?el.value:''}
 function gn(id){return parseFloat(document.getElementById(id)?.value)||0}
 
 async function saveModal(){
   const btn=document.getElementById('btn-save');
-  btn.disabled=true;btn.textContent='Saving...';
+  btn.disabled=true;btn.textContent=editId?'Updating...':'Saving...';
   try{
     let table='',payload={};
     const type=currentModal;
@@ -698,18 +708,30 @@ async function saveModal(){
       table=type;
       payload={name:gv('f-name'),amount:gn('f-amount'),currency:gv('f-currency'),category:gv('f-category'),date:gv('f-date'),notes:gv('f-notes')};
     } else if(type==='budget-item'){
-      // stored locally
-      const item={id:Date.now(),name:gv('f-name'),itype:gv('f-itype'),amount_ngn:gn('f-amount_ngn'),amount_usd:gn('f-amount_usd')};
-      budget.items.push(item);
+      if(editId){
+        const item=budget.items.find(i=>i.id===editId);
+        if(item){item.name=gv('f-name');item.itype=gv('f-itype');item.amount_ngn=gn('f-amount_ngn');item.amount_usd=gn('f-amount_usd');}
+      } else {
+        const item={id:Date.now(),name:gv('f-name'),itype:gv('f-itype'),amount_ngn:gn('f-amount_ngn'),amount_usd:gn('f-amount_usd')};
+        budget.items.push(item);
+      }
       saveBudget();closeModal();renderAll();return;
     }
 
     if(!gv('f-name')&&type!=='budget-item'){btn.disabled=false;btn.textContent='Save';return;}
-    await sb(table,{method:'POST',body:payload});
-    closeModal();showToast('Saved ✓');await loadAll();
+
+    if(editId){
+      // PATCH existing record
+      await sb(table,{method:'PATCH',body:payload,params:`id=eq.${editId}`});
+      closeModal();showToast('Updated ✓');
+    } else {
+      await sb(table,{method:'POST',body:payload});
+      closeModal();showToast('Saved ✓');
+    }
+    await loadAll();
   }catch(e){
     showToast('Error saving');console.error(e);
-    btn.disabled=false;btn.textContent='Save';
+    btn.disabled=false;btn.textContent=editId?'Update':'Save';
   }
 }
 
@@ -770,7 +792,7 @@ function renderAccounts(){
       <td style="color:var(--text3);font-size:12px">${a.account_no||'—'}</td>
       <td style="text-align:right" class="mono">₦${Math.round(a.balance||0).toLocaleString()}</td>
       <td><span class="badge badge-blue">${a.type||'Current'}</span></td>
-      <td><div class="actions"><button class="btn-sm" onclick="del('accounts_ngn','${a.id}')">Delete</button></div></td>
+      <td><div class="actions"><button class="btn-sm" onclick="openModal('account-ngn',${JSON.stringify(a).replace(/'/g,&quot;&amp;apos;&quot;)})">Edit</button><button class="btn-sm" style="color:var(--red)" onclick="del('accounts_ngn','${a.id}')">Del</button></div></td>
     </tr>`).join(''):'<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:1.5rem">No NGN accounts yet</td></tr>';
   const totalNGN=D.accounts_ngn.reduce((s,a)=>s+(a.balance||0),0);
   document.getElementById('total-ngn').textContent='₦'+Math.round(totalNGN).toLocaleString();
@@ -783,7 +805,7 @@ function renderAccounts(){
       <td style="color:var(--text3);font-size:12px">${a.account_no||'—'}</td>
       <td style="text-align:right" class="mono">$${(a.balance||0).toLocaleString()}</td>
       <td style="text-align:right;color:var(--text3);font-size:13px" class="mono">₦${Math.round((a.balance||0)*r).toLocaleString()}</td>
-      <td><div class="actions"><button class="btn-sm" onclick="del('accounts_usd','${a.id}')">Delete</button></div></td>
+      <td><div class="actions"><button class="btn-sm" onclick="openModal('account-usd',${JSON.stringify(a).replace(/'/g,&quot;&amp;apos;&quot;)})">Edit</button><button class="btn-sm" style="color:var(--red)" onclick="del('accounts_usd','${a.id}')">Del</button></div></td>
     </tr>`).join(''):'<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:1.5rem">No USD accounts yet</td></tr>';
   const totalUSD=D.accounts_usd.reduce((s,a)=>s+(a.balance||0),0);
   document.getElementById('total-usd').textContent='$'+totalUSD.toFixed(2);
@@ -814,6 +836,7 @@ function renderBudget(){
           <div class="bline-type">${item.itype==='fixed'?'Fixed':'Variable'}</div>
         </div>
         <input class="bline-input" type="number" value="${item.amount_ngn||''}" placeholder="₦" onchange="updateBudgetItem(${item.id},'amount_ngn',this.value)"/>
+        <button class="btn-sm" style="margin-right:4px" onclick="openModal('budget-item',{id:${item.id},name:'${item.name.replace(/'/g,\\\')}',itype:'${item.itype}',amount_ngn:${item.amount_ngn||0},amount_usd:${item.amount_usd||0}})">Edit</button>
         <button class="bline-del" onclick="deleteBudgetItem(${item.id})">&#215;</button>
       </div>`).join('');
   }
@@ -852,7 +875,7 @@ function renderTracker(){
         <td><span class="badge badge-green">${e.category||''}</span></td>
         <td style="color:var(--text3);font-size:12px">${e.date||''}</td>
         <td style="text-align:right" class="mono" style="color:var(--green)">${fmtRaw(e.amount||0,e.currency)}</td>
-        <td><button class="btn-sm" onclick="del('income','${e.id}')">Del</button></td>
+        <td><div class="actions"><button class="btn-sm" onclick="openModal('income',${JSON.stringify(e)})">Edit</button><button class="btn-sm" style="color:var(--red)" onclick="del('income','${e.id}')">Del</button></div></td>
       </tr>`).join('')+`</tbody><tfoot><tr><td colspan="3" style="color:var(--text2)">Total</td><td style="text-align:right;color:var(--green)" class="mono">${fmt(D.income.reduce((s,e)=>s+toNGN(e.amount||0,e.currency),0))}</td><td></td></tr></tfoot></table>`;
   }
 
@@ -866,7 +889,7 @@ function renderTracker(){
         <td><span class="badge badge-amber">${e.category||''}</span></td>
         <td style="color:var(--text3);font-size:12px">${e.date||''}</td>
         <td style="text-align:right;color:var(--red)" class="mono">${fmtRaw(e.amount||0,e.currency)}</td>
-        <td><button class="btn-sm" onclick="del('expenses','${e.id}')">Del</button></td>
+        <td><div class="actions"><button class="btn-sm" onclick="openModal('expenses',${JSON.stringify(e)})">Edit</button><button class="btn-sm" style="color:var(--red)" onclick="del('expenses','${e.id}')">Del</button></div></td>
       </tr>`).join('')+`</tbody><tfoot><tr><td colspan="3" style="color:var(--text2)">Total</td><td style="text-align:right;color:var(--red)" class="mono">${fmt(D.expenses.reduce((s,e)=>s+toNGN(e.amount||0,e.currency),0))}</td><td></td></tr></tfoot></table>`;
   }
 }
@@ -880,7 +903,7 @@ function renderInvestments(){
       <td><span class="badge badge-purple">${i.type||''}</span></td>
       <td style="text-align:right" class="mono">₦${Math.round((i.value_ngn||0)).toLocaleString()}</td>
       <td style="text-align:right" class="mono">$${((i.value_usd||0)+(i.value_ngn||0)/r).toFixed(2)}</td>
-      <td><button class="btn-sm" onclick="del('investments','${i.id}')">Del</button></td>
+      <td><div class="actions"><button class="btn-sm" onclick="openModal('investment',${JSON.stringify(i)})">Edit</button><button class="btn-sm" style="color:var(--red)" onclick="del('investments','${i.id}')">Del</button></div></td>
     </tr>`).join(''):'<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:1.5rem">No investments yet</td></tr>';
 
   const totalNGN=D.investments.reduce((s,i)=>s+(i.value_ngn||0)+(i.value_usd||0)*r,0);
@@ -895,7 +918,8 @@ function renderInvestments(){
     return `<div class="prog-row">
       <div class="prog-info">
         <div class="prog-name">${g.name}${g.date?` <span style="font-size:12px;color:var(--text3)">· by ${g.date}</span>`:''}
-          <button class="bline-del" onclick="del('saving_goals','${g.id}')" style="margin-left:8px">&#215;</button>
+          <button class="btn-sm" style="margin-left:8px;margin-right:4px" onclick="openModal('saving-goal',${JSON.stringify(g)})">Edit</button>
+          <button class="bline-del" onclick="del('saving_goals','${g.id}')" style="margin-left:2px">&#215;</button>
         </div>
         <div class="prog-track"><div class="prog-fill" style="width:${pct}%;background:var(--blue)"></div></div>
         <div class="prog-meta">₦${Math.round(g.current_amount||0).toLocaleString()} of ₦${Math.round(g.target_amount||0).toLocaleString()}</div>
@@ -914,7 +938,7 @@ function renderAssets(){
       <td style="color:var(--text3)">${a.year||'—'}</td>
       <td style="text-align:right" class="mono">₦${Math.round((a.value_ngn||0)).toLocaleString()}</td>
       <td style="text-align:right" class="mono">$${Math.round(((a.value_ngn||0)+(a.value_usd||0)*r)/r).toLocaleString()}</td>
-      <td><button class="btn-sm" onclick="del('assets','${a.id}')">Del</button></td>
+      <td><div class="actions"><button class="btn-sm" onclick="openModal('asset',${JSON.stringify(a)})">Edit</button><button class="btn-sm" style="color:var(--red)" onclick="del('assets','${a.id}')">Del</button></div></td>
     </tr>`).join(''):'<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:1.5rem">No assets yet</td></tr>';
 
   const totalNGN=D.assets.reduce((s,a)=>s+(a.value_ngn||0)+(a.value_usd||0)*r,0);
@@ -946,7 +970,7 @@ function renderPlanned(){
       <td style="color:var(--text3);font-size:12px">${p.date||'—'}</td>
       <td style="text-align:right" class="mono">${fmt(amt)}</td>
       <td>${badge}</td>
-      <td><button class="btn-sm" onclick="del('planned','${p.id}')">Del</button></td>
+      <td><div class="actions"><button class="btn-sm" onclick="openModal('planned',${JSON.stringify(p)})">Edit</button><button class="btn-sm" style="color:var(--red)" onclick="del('planned','${p.id}')">Del</button></div></td>
     </tr>`;
   }).join('');
 }
