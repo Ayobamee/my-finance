@@ -534,6 +534,26 @@ function changeMonth(dir){
   loadAll();
 }
 
+// ── EDIT HELPER ──────────────────────────────────────────────
+const TABLE_TO_CACHE = {
+  'account-ngn':'accounts_ngn','account-usd':'accounts_usd',
+  'investment':'investments','saving-goal':'saving_goals',
+  'asset':'assets','planned':'planned',
+  'income':'income','expenses':'expenses'
+};
+
+function editBudgetItem(id){
+  const item = budget.items.find(i=>i.id===id);
+  if(item) openModal('budget-item', item);
+}
+
+function editRecord(type, id){
+  const cacheKey = TABLE_TO_CACHE[type];
+  const record = D[cacheKey] && D[cacheKey].find(r=>r.id===id);
+  if(record) openModal(type, record);
+  else showToast('Could not find record');
+}
+
 // ── DELETE ────────────────────────────────────────────────
 async function del(table,id){
   if(!confirm('Delete?')) return;
@@ -792,7 +812,7 @@ function renderAccounts(){
       <td style="color:var(--text3);font-size:12px">${a.account_no||'—'}</td>
       <td style="text-align:right" class="mono">₦${Math.round(a.balance||0).toLocaleString()}</td>
       <td><span class="badge badge-blue">${a.type||'Current'}</span></td>
-      <td><div class="actions"><button class="btn-sm" onclick="openModal('account-ngn',${JSON.stringify(a).replace(/'/g,&quot;&amp;apos;&quot;)})">Edit</button><button class="btn-sm" style="color:var(--red)" onclick="del('accounts_ngn','${a.id}')">Del</button></div></td>
+      <td><div class="actions"><button class="btn-sm" onclick="editRecord('account-ngn','${a.id}')">Edit</button><button class="btn-sm" style="color:var(--red)" onclick="del('accounts_ngn','${a.id}')">Del</button></div></td>
     </tr>`).join(''):'<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:1.5rem">No NGN accounts yet</td></tr>';
   const totalNGN=D.accounts_ngn.reduce((s,a)=>s+(a.balance||0),0);
   document.getElementById('total-ngn').textContent='₦'+Math.round(totalNGN).toLocaleString();
@@ -805,7 +825,7 @@ function renderAccounts(){
       <td style="color:var(--text3);font-size:12px">${a.account_no||'—'}</td>
       <td style="text-align:right" class="mono">$${(a.balance||0).toLocaleString()}</td>
       <td style="text-align:right;color:var(--text3);font-size:13px" class="mono">₦${Math.round((a.balance||0)*r).toLocaleString()}</td>
-      <td><div class="actions"><button class="btn-sm" onclick="openModal('account-usd',${JSON.stringify(a).replace(/'/g,&quot;&amp;apos;&quot;)})">Edit</button><button class="btn-sm" style="color:var(--red)" onclick="del('accounts_usd','${a.id}')">Del</button></div></td>
+      <td><div class="actions"><button class="btn-sm" onclick="editRecord('account-usd','${a.id}')">Edit</button><button class="btn-sm" style="color:var(--red)" onclick="del('accounts_usd','${a.id}')">Del</button></div></td>
     </tr>`).join(''):'<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:1.5rem">No USD accounts yet</td></tr>';
   const totalUSD=D.accounts_usd.reduce((s,a)=>s+(a.balance||0),0);
   document.getElementById('total-usd').textContent='$'+totalUSD.toFixed(2);
@@ -836,7 +856,7 @@ function renderBudget(){
           <div class="bline-type">${item.itype==='fixed'?'Fixed':'Variable'}</div>
         </div>
         <input class="bline-input" type="number" value="${item.amount_ngn||''}" placeholder="₦" onchange="updateBudgetItem(${item.id},'amount_ngn',this.value)"/>
-        <button class="btn-sm" style="margin-right:4px" onclick="openModal('budget-item',{id:${item.id},name:'${item.name.replace(/'/g,\\\')}',itype:'${item.itype}',amount_ngn:${item.amount_ngn||0},amount_usd:${item.amount_usd||0}})">Edit</button>
+        <button class="btn-sm" style="margin-right:4px" onclick="editBudgetItem(${item.id})">Edit</button>
         <button class="bline-del" onclick="deleteBudgetItem(${item.id})">&#215;</button>
       </div>`).join('');
   }
@@ -875,7 +895,7 @@ function renderTracker(){
         <td><span class="badge badge-green">${e.category||''}</span></td>
         <td style="color:var(--text3);font-size:12px">${e.date||''}</td>
         <td style="text-align:right" class="mono" style="color:var(--green)">${fmtRaw(e.amount||0,e.currency)}</td>
-        <td><div class="actions"><button class="btn-sm" onclick="openModal('income',${JSON.stringify(e)})">Edit</button><button class="btn-sm" style="color:var(--red)" onclick="del('income','${e.id}')">Del</button></div></td>
+        <td><div class="actions"><button class="btn-sm" onclick="editRecord('income','${e.id}')">Edit</button><button class="btn-sm" style="color:var(--red)" onclick="del('income','${e.id}')">Del</button></div></td>
       </tr>`).join('')+`</tbody><tfoot><tr><td colspan="3" style="color:var(--text2)">Total</td><td style="text-align:right;color:var(--green)" class="mono">${fmt(D.income.reduce((s,e)=>s+toNGN(e.amount||0,e.currency),0))}</td><td></td></tr></tfoot></table>`;
   }
 
@@ -889,7 +909,7 @@ function renderTracker(){
         <td><span class="badge badge-amber">${e.category||''}</span></td>
         <td style="color:var(--text3);font-size:12px">${e.date||''}</td>
         <td style="text-align:right;color:var(--red)" class="mono">${fmtRaw(e.amount||0,e.currency)}</td>
-        <td><div class="actions"><button class="btn-sm" onclick="openModal('expenses',${JSON.stringify(e)})">Edit</button><button class="btn-sm" style="color:var(--red)" onclick="del('expenses','${e.id}')">Del</button></div></td>
+        <td><div class="actions"><button class="btn-sm" onclick="editRecord('expenses','${e.id}')">Edit</button><button class="btn-sm" style="color:var(--red)" onclick="del('expenses','${e.id}')">Del</button></div></td>
       </tr>`).join('')+`</tbody><tfoot><tr><td colspan="3" style="color:var(--text2)">Total</td><td style="text-align:right;color:var(--red)" class="mono">${fmt(D.expenses.reduce((s,e)=>s+toNGN(e.amount||0,e.currency),0))}</td><td></td></tr></tfoot></table>`;
   }
 }
@@ -903,7 +923,7 @@ function renderInvestments(){
       <td><span class="badge badge-purple">${i.type||''}</span></td>
       <td style="text-align:right" class="mono">₦${Math.round((i.value_ngn||0)).toLocaleString()}</td>
       <td style="text-align:right" class="mono">$${((i.value_usd||0)+(i.value_ngn||0)/r).toFixed(2)}</td>
-      <td><div class="actions"><button class="btn-sm" onclick="openModal('investment',${JSON.stringify(i)})">Edit</button><button class="btn-sm" style="color:var(--red)" onclick="del('investments','${i.id}')">Del</button></div></td>
+      <td><div class="actions"><button class="btn-sm" onclick="editRecord('investment','${i.id}')">Edit</button><button class="btn-sm" style="color:var(--red)" onclick="del('investments','${i.id}')">Del</button></div></td>
     </tr>`).join(''):'<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:1.5rem">No investments yet</td></tr>';
 
   const totalNGN=D.investments.reduce((s,i)=>s+(i.value_ngn||0)+(i.value_usd||0)*r,0);
@@ -918,7 +938,7 @@ function renderInvestments(){
     return `<div class="prog-row">
       <div class="prog-info">
         <div class="prog-name">${g.name}${g.date?` <span style="font-size:12px;color:var(--text3)">· by ${g.date}</span>`:''}
-          <button class="btn-sm" style="margin-left:8px;margin-right:4px" onclick="openModal('saving-goal',${JSON.stringify(g)})">Edit</button>
+          <button class="btn-sm" style="margin-left:8px;margin-right:4px" onclick="editRecord('saving-goal','${g.id}')">Edit</button>
           <button class="bline-del" onclick="del('saving_goals','${g.id}')" style="margin-left:2px">&#215;</button>
         </div>
         <div class="prog-track"><div class="prog-fill" style="width:${pct}%;background:var(--blue)"></div></div>
@@ -938,7 +958,7 @@ function renderAssets(){
       <td style="color:var(--text3)">${a.year||'—'}</td>
       <td style="text-align:right" class="mono">₦${Math.round((a.value_ngn||0)).toLocaleString()}</td>
       <td style="text-align:right" class="mono">$${Math.round(((a.value_ngn||0)+(a.value_usd||0)*r)/r).toLocaleString()}</td>
-      <td><div class="actions"><button class="btn-sm" onclick="openModal('asset',${JSON.stringify(a)})">Edit</button><button class="btn-sm" style="color:var(--red)" onclick="del('assets','${a.id}')">Del</button></div></td>
+      <td><div class="actions"><button class="btn-sm" onclick="editRecord('asset','${a.id}')">Edit</button><button class="btn-sm" style="color:var(--red)" onclick="del('assets','${a.id}')">Del</button></div></td>
     </tr>`).join(''):'<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:1.5rem">No assets yet</td></tr>';
 
   const totalNGN=D.assets.reduce((s,a)=>s+(a.value_ngn||0)+(a.value_usd||0)*r,0);
@@ -970,7 +990,7 @@ function renderPlanned(){
       <td style="color:var(--text3);font-size:12px">${p.date||'—'}</td>
       <td style="text-align:right" class="mono">${fmt(amt)}</td>
       <td>${badge}</td>
-      <td><div class="actions"><button class="btn-sm" onclick="openModal('planned',${JSON.stringify(p)})">Edit</button><button class="btn-sm" style="color:var(--red)" onclick="del('planned','${p.id}')">Del</button></div></td>
+      <td><div class="actions"><button class="btn-sm" onclick="editRecord('planned','${p.id}')">Edit</button><button class="btn-sm" style="color:var(--red)" onclick="del('planned','${p.id}')">Del</button></div></td>
     </tr>`;
   }).join('');
 }
