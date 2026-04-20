@@ -373,6 +373,11 @@ body{font-family:var(--font);font-size:15px;background:var(--bg3);color:var(--te
     <table class="tbl">
       <thead><tr><th>Item</th><th>Category</th><th>Due</th><th style="text-align:right">Amount</th><th>Status</th><th></th></tr></thead>
       <tbody id="body-planned"></tbody>
+      <tfoot id="planned-tfoot" style="display:none"><tr>
+        <td colspan="3" style="color:var(--text2);font-size:13px">Total planned</td>
+        <td style="text-align:right;color:var(--amber)" id="planned-total-ngn">₦0</td>
+        <td colspan="2" style="color:var(--text3);font-size:12px" id="planned-total-usd"></td>
+      </tr></tfoot>
     </table>
     <div id="planned-empty" class="empty" style="display:none">No planned expenses yet</div>
   </div>
@@ -971,9 +976,16 @@ function renderPlanned(){
   const now=new Date(); now.setHours(0,0,0,0);
   const bp=document.getElementById('body-planned');
   const pe=document.getElementById('planned-empty');
+  const pf=document.getElementById('planned-tfoot');
 
-  if(!D.planned.length){bp.innerHTML='';pe.style.display='block';return;}
-  pe.style.display='none';
+  if(!D.planned.length){bp.innerHTML='';pe.style.display='block';pf.style.display='none';return;}
+  pe.style.display='none';pf.style.display='';
+
+  // compute totals
+  const totalNGN=D.planned.reduce((s,p)=>s+(p.amount_ngn||0)+(p.amount_usd||0)*r,0);
+  const totalUSD=totalNGN/r;
+  document.getElementById('planned-total-ngn').textContent='₦'+Math.round(totalNGN).toLocaleString();
+  document.getElementById('planned-total-usd').textContent='$'+totalUSD.toFixed(2)+' · '+D.planned.length+' item'+(D.planned.length===1?'':'s');
 
   bp.innerHTML=D.planned.map(p=>{
     const due=p.date?new Date(p.date):null;
@@ -1050,7 +1062,8 @@ function renderDashboard(){
   const dp=document.getElementById('dash-planned');
   if(!upcoming.length){dp.innerHTML='<div class="empty">No planned expenses</div>';}
   else{
-    dp.innerHTML=upcoming.map(p=>{
+    const allPlannedTotal=D.planned.reduce((s,p)=>s+(p.amount_ngn||0)+(p.amount_usd||0)*r,0);
+  dp.innerHTML=upcoming.map(p=>{
       const diff=Math.round((p.due-now)/(1000*60*60*24));
       const amt=(p.amount_ngn||0)+(p.amount_usd||0)*r;
       let bc='badge-blue',bt=`In ${diff}d`;
@@ -1061,7 +1074,11 @@ function renderDashboard(){
         <div style="font-family:var(--mono);font-size:13px;font-weight:500;color:var(--amber)">${fmt(amt)}</div>
         <span class="badge ${bc}">${bt}</span>
       </div>`;
-    }).join('');
+    }).join('')
+    + (D.planned.length>0?`<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;margin-top:4px">
+        <span style="font-size:12px;color:var(--text3)">${D.planned.length} item${D.planned.length===1?'':'s'} total</span>
+        <span style="font-family:var(--mono);font-size:14px;font-weight:500;color:var(--amber)">${fmt(allPlannedTotal)}</span>
+      </div>`:'');
   }
 
   // tracker summary
