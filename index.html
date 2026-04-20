@@ -166,7 +166,8 @@ body{font-family:var(--font);font-size:15px;background:var(--bg3);color:var(--te
 <div class="fx-bar">
   <label>USD / NGN rate:</label>
   <input type="number" id="fx-rate" value="1580" min="1" onchange="renderAll()"/>
-  <span>Update whenever the rate changes</span>
+  <span id="fx-status" style="color:var(--text3);font-size:12px">Fetching live rate...</span>
+  <button class="btn-sm" onclick="fetchRate(true)" style="margin-left:auto">&#8635; Refresh</button>
 </div>
 
 <!-- TOP STATS -->
@@ -450,6 +451,44 @@ function saveBudget(){
   budget.earnings_ngn = parseFloat(document.getElementById('earnings-ngn').value)||0;
   budget.earnings_usd = parseFloat(document.getElementById('earnings-usd').value)||0;
   lsSet('fin_budget', budget);
+}
+
+// ── LIVE FX RATE ─────────────────────────────────────────────
+async function fetchRate(manual=false){
+  const statusEl = document.getElementById('fx-status');
+  try {
+    if(statusEl) statusEl.textContent = 'Fetching live rate...';
+    // Use exchangerate-api (free, no key needed for this endpoint)
+    const res = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
+    const data = await res.json();
+    const rate = data.rates && data.rates.NGN;
+    if(rate && rate > 0){
+      document.getElementById('fx-rate').value = Math.round(rate);
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+      if(statusEl) statusEl.textContent = `Live rate · updated ${timeStr}`;
+      localStorage.setItem('fin_fx_rate', Math.round(rate));
+      localStorage.setItem('fin_fx_updated', now.toISOString());
+      renderAll();
+      if(manual) showToast('Rate updated: ₦'+Math.round(rate)+'/$');
+    } else {
+      throw new Error('No NGN rate');
+    }
+  } catch(e) {
+    // fallback to cached rate or keep manual
+    const cached = localStorage.getItem('fin_fx_rate');
+    const cachedTime = localStorage.getItem('fin_fx_updated');
+    if(cached){
+      document.getElementById('fx-rate').value = cached;
+      const d = cachedTime ? new Date(cachedTime) : null;
+      const timeStr = d ? d.toLocaleDateString([], {month:'short',day:'numeric'}) : '';
+      if(statusEl) statusEl.textContent = `Cached rate · ${timeStr} (live fetch failed)`;
+      renderAll();
+    } else {
+      if(statusEl) statusEl.textContent = 'Could not fetch — update manually';
+    }
+    console.warn('FX fetch failed:', e);
+  }
 }
 
 // ── LOAD ─────────────────────────────────────────────────
@@ -1114,7 +1153,11 @@ document.addEventListener('keydown',e=>{
   if(e.key==='Enter'&&document.getElementById('overlay').classList.contains('open')) saveModal();
 });
 updateCurrencyButtons();
-loadAll();
+// restore cached rate immediately so UI shows something while fetching
+const cachedRate = localStorage.getItem('fin_fx_rate');
+if(cachedRate) document.getElementById('fx-rate').value = cachedRate;
+// fetch live rate, then load data
+fetchRate().then(()=>loadAll()).catch(()=>loadAll());
 </script>
 
 <!-- SUPABASE TABLES NEEDED (run in SQL editor):
